@@ -1,0 +1,9 @@
+orlaye/__pacache__
+tensorlaye/.DS_Store
+.DS_Store
+dist
+build/
+tensorlayer.egg-info
+data/.DS_Store
+*.pyc
+*.gz
