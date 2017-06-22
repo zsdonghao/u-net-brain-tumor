@@ -42,8 +42,16 @@ def main(label_type, data_type):
     import prepare_data
     cwd = os.getcwd()
     file_dir = os.path.join(cwd, 'data/Brats17TrainingData/HGG')
-        # X_train, y_train, X_test, y_test, nw, nh, nz = prepare_data.get_data(label_type, data_type) REMOVE
-    X_train, y_train, X_test, y_test, nw, nh, nz = prepare_data.get_data_brats2017(label_type, data_type, file_dir)
+    # X_train, y_train, X_test, y_test, nw, nh, nz = prepare_data.get_data_brats2017(label_type, data_type, file_dir)
+
+    folder_hgg = sorted(tl.files.load_folder_list('data/Brats17TrainingData/HGG'))
+    print("num of patient: %d" % len(folder_hgg))
+    for folder in folder_hgg:
+        print(folder)
+        f_flair = tl.files.load_file_list(path=folder, regx='\.gz', printable=False)
+        print(f_flair)
+        # read_Nifti1Image(file_dir, 'Brats17_2013_2_1')
+    exit()
 
     with tf.device('/cpu:0'):
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
