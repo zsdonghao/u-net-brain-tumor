@@ -47,6 +47,21 @@ def main(label_type, data_type):
     folder_hgg = sorted(tl.files.load_folder_list('data/Brats17TrainingData/HGG'))
     print("num of patient: %d" % len(folder_hgg))
 
+    """
+    In seg file
+    --------------
+    Label 1: necrotic and non-enhancing tumor
+    Label 2: edema 
+    Label 4: enhancing tumor
+    Label 0: background
+
+    Labels
+    -------
+    whole/complete tumor: 1 2 4
+    core: 1 4
+    enhance: 4
+    """
+
     for folder in folder_hgg:
         print("Loading %s" % folder)
         files = tl.files.load_file_list(path=folder, regx='\.gz', printable=False)
