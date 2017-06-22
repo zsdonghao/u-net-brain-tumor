@@ -150,7 +150,7 @@ def main(label_type, data_type):
                     (epoch, n_epoch, total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch, time.time()-epoch_time))
 
             ## Save training images of Flair, T1, T1c, T2, label and prediction in order
-            tl.visualize.save_images(np.asarray([b_images[0][:,:,0,np.newaxis],
+            tl.vis.save_images(np.asarray([b_images[0][:,:,0,np.newaxis],
                 b_images[0][:,:,1,np.newaxis], b_images[0][:,:,2,np.newaxis],
                 b_images[0][:,:,3,np.newaxis], b_labels[0], out[0,:,:,0,np.newaxis]]), size=(1, 6),
                 image_path="samples/images_{}_{}_{}/train_{}.png".format(mode, label_type, data_type, epoch))
@@ -172,7 +172,7 @@ def main(label_type, data_type):
             print("    for {} tumor , {} fold".format(label_type, data_type))
 
             ## Save testing images of Flair, T1, T1c, T2, label and prediction in order
-            tl.visualize.save_images(np.asarray([b_images[0][:,:,0,np.newaxis],
+            tl.vis.save_images(np.asarray([b_images[0][:,:,0,np.newaxis],
                 b_images[0][:,:,1,np.newaxis], b_images[0][:,:,2,np.newaxis],
                 b_images[0][:,:,3,np.newaxis], b_labels[0], out[0,:,:,0,np.newaxis]]), size=(1, 6),
                 image_path="samples/images_{}_{}/test_{}.png".format(label_type, data_type, epoch))
