@@ -46,11 +46,25 @@ def main(label_type, data_type):
 
     folder_hgg = sorted(tl.files.load_folder_list('data/Brats17TrainingData/HGG'))
     print("num of patient: %d" % len(folder_hgg))
+
     for folder in folder_hgg:
-        print(folder)
-        f_flair = tl.files.load_file_list(path=folder, regx='\.gz', printable=False)
-        print(f_flair)
-        # read_Nifti1Image(file_dir, 'Brats17_2013_2_1')
+        print("Loading %s" % folder)
+        files = tl.files.load_file_list(path=folder, regx='\.gz', printable=False)
+        # print(files)
+        for f in files:
+            if 'flair.' in f:
+                img_flair = nib.load(os.path.join(folder, f))
+            elif 't1.' in f:
+                img_t1 = nib.load(os.path.join(folder, f))
+            elif 't1ce.' in f:
+                img_t1c = nib.load(os.path.join(folder, f))
+            elif 't2.' in f:
+                img_t2 = nib.load(os.path.join(folder, f))
+            elif 'seg.' in f:
+                img_seg = nib.load(os.path.join(folder, f))
+            else:
+                exit("unknow scanning")
+
     exit()
 
     with tf.device('/cpu:0'):
