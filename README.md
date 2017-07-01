@@ -14,7 +14,7 @@ train.py
 ### About the data
 
 <div align="center">
-    <img src="https://github.com/zsdonghao/u-net-brain-tumor/blob/master/example/brain_tumor_data.png" width="100%" height="50%"/>
+    <img src="https://github.com/zsdonghao/u-net-brain-tumor/blob/master/example/brain_tumor_data.png" width="80%" height="50%"/>
     <br>  
     <em align="center">Fig 1: Brain Image</em>  
 </div>
@@ -38,7 +38,7 @@ The `prepare_data_with_valid.py` split the training set into 2 folds for trainin
 - Data augmenation: Includes random left and right flip, rotation, shifting, shearing, zooming and most important one -- [elastic trasnform](http://tensorlayer.readthedocs.io/en/latest/modules/prepro.html#elastic-transform) which is borrowed from ["Automatic Brain Tumor Detection and Segmentation Using U-Net Based Fully Convolutional Networks"](https://arxiv.org/pdf/1705.03820.pdf).
 
 <div align="center">
-    <img src="https://github.com/zsdonghao/u-net-brain-tumor/blob/master/example/brain_tumor_aug.png" width="100%" height="50%"/>
+    <img src="https://github.com/zsdonghao/u-net-brain-tumor/blob/master/example/brain_tumor_aug.png" width="80%" height="50%"/>
     <br>  
     <em align="center">Fig 1: Brain Image</em>  
 </div>
