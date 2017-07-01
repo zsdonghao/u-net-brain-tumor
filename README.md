@@ -35,7 +35,7 @@ The `prepare_data_with_valid.py` split the training set into 2 folds for trainin
 
 - Network and Loss: In this experiment, as we use [dice loss](http://tensorlayer.readthedocs.io/en/latest/modules/cost.html#dice-coefficient) to train a network, one network only predict one labels (Label 1,2 or 4). We evaluate the performance using [hard dice](http://tensorlayer.readthedocs.io/en/latest/modules/cost.html#hard-dice-coefficient) and [IOU](http://tensorlayer.readthedocs.io/en/latest/modules/cost.html#iou-coefficient).
 
-- Data augmenation: Includes random left and right flip, rotation, shifting, shearing, zooming and most important one -- [elastic trasnform](http://tensorlayer.readthedocs.io/en/latest/modules/prepro.html#elastic-transform) which is borrowed from ["Automatic Brain Tumor Detection and Segmentation Using U-Net Based Fully Convolutional Networks"](https://arxiv.org/pdf/1705.03820.pdf).
+- Data augmenation: Includes random left and right flip, rotation, shifting, shearing, zooming and the most important one -- [Elastic trasnformation](http://tensorlayer.readthedocs.io/en/latest/modules/prepro.html#elastic-transform) which is borrowed from ["Automatic Brain Tumor Detection and Segmentation Using U-Net Based Fully Convolutional Networks"](https://arxiv.org/pdf/1705.03820.pdf).
 
 <div align="center">
     <img src="https://github.com/zsdonghao/u-net-brain-tumor/blob/master/example/brain_tumor_aug.png" width="80%" height="50%"/>
