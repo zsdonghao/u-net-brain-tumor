@@ -40,7 +40,7 @@ The `prepare_data_with_valid.py` split the training set into 2 folds for trainin
 <div align="center">
     <img src="https://github.com/zsdonghao/u-net-brain-tumor/blob/master/example/brain_tumor_aug.png" width="80%" height="50%"/>
     <br>  
-    <em align="center">Fig 1: Brain Image</em>  
+    <em align="center">Fig 2: Data augmentation</em>  
 </div>
 
 ### Start training
