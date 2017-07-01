@@ -1,139 +1,133 @@
 #! /usr/bin/python
 # -*- coding: utf8 -*-
 
-"""
-This is a simple "U-Net Training Example" which inputs brain f-MRI including
-all Flair, T1, T1c and T2 images to predicts the different tumors
-(whole tumor, core tumor or enhance tumor)
-
-This example implemented on Brats 2017 dataset using :
-* Sørensen–Dice coefficient for loss function
-* Elastic transform, flip left and right, rotation, shift, shearing and zoom for data augumentation
-* Sørensen–Dice coefficient for loss function
-* Flair, T1, T1c and T2 images --> whole tumor, core tumor or enhance tumor
-
-Usage
-------
-If you wnat to test on the 5th fold and predict the whole tumor :
-
->>> python train.py --label=whole --data=f5
-
-Licence
---------
-Apache 2.0
-"""
-
 import tensorflow as tf
 import tensorlayer as tl
-from tensorlayer.prepro import *
 import numpy as np
-import os
-from model import *
-from utils import *
+import os, time, model
 
-def main(label_type, data_type):
-    ## Create folder to save trained models and result images
+def distort_imgs(data):
+    """ data augumentation """
+    x1, x2, x3, x4, y = data
+    x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y], axis=1, is_random=True) # left right
+    x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y], alpha=255 * 3, sigma=255 * 0.15, is_random=True)
+    x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=20, is_random=True, fill_mode='constant')
+    x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10, hrg=0.10, is_random=True, fill_mode='constant')
+    x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05, is_random=True, fill_mode='constant')
+    x1, x2, x3, x4, y = tl.prepro.zoom_multi([x1, x2, x3, x4, y], zoom_range=[0.90, 1.10], is_random=True, fill_mode='constant')
+    return x1, x2, x3, x4, y
+
+def vis_imgs(X, y, path):
+    """ show one slice """
+    if y.ndim == 2:
+        y = y[:,:,np.newaxis]
+    assert X.ndim == 3
+    tl.vis.save_images(np.asarray([X[:,:,0,np.newaxis],
+        X[:,:,1,np.newaxis], X[:,:,2,np.newaxis],
+        X[:,:,3,np.newaxis], y]), size=(1, 5),
+        image_path=path)
+
+def main(task='necrotic'):
+    ## Create folder to save trained model and result images
     save_dir = "checkpoint"
     tl.files.exists_or_mkdir(save_dir)
-    tl.files.exists_or_mkdir("samples/images_{}_{}".format(label_type, data_type))
+    tl.files.exists_or_mkdir("samples/{}".format(task))
 
-    ###======================== LOAD DATA ======================================###
-    ## You can load your own data here.
-    import prepare_data
-    cwd = os.getcwd()
-    file_dir = os.path.join(cwd, 'data/Brats17TrainingData/HGG')
-    # X_train, y_train, X_test, y_test, nw, nh, nz = prepare_data.get_data_brats2017(label_type, data_type, file_dir)
+    ###======================== LOAD DATA ===================================###
+    ## by importing this, you can load a training set and a validation set.
+    # you will get X_train_input, X_train_target, X_dev_input and X_dev_target
+    # there are 4 labels in targets:
+    # Label 0: background
+    # Label 1: necrotic and non-enhancing tumor
+    # Label 2: edema 
+    # Label 4: enhancing tumor
+    import prepare_data_with_valid as dataset
+    X_train = dataset.X_train_input
+    y_train = dataset.X_train_target[:,:,:,np.newaxis]
+    X_test = dataset.X_dev_input
+    y_test = dataset.X_dev_target[:,:,:,np.newaxis]
 
-    folder_hgg = sorted(tl.files.load_folder_list('data/Brats17TrainingData/HGG'))
-    print("num of patient: %d" % len(folder_hgg))
+    if task == 'all':
+        y_train = (y_train > 0).astype(int)
+        y_test = (y_test > 0).astype(int)
+    elif task == 'necrotic':
+        y_train = (y_train == 1).astype(int)
+        y_test = (y_test == 1).astype(int)
+    elif task == 'edema':
+        y_train = (y_train == 2).astype(int)
+        y_test = (y_test == 2).astype(int)
+    elif task == 'enhance':
+        y_train = (y_train == 4).astype(int)
+        y_test = (y_test == 4).astype(int)
+    else:
+        exit("Unknow task %s" % task)
 
-    """
-    In seg file
-    --------------
-    Label 1: necrotic and non-enhancing tumor
-    Label 2: edema 
-    Label 4: enhancing tumor
-    Label 0: background
+    ###======================== HYPER-PARAMETERS ============================###
+    batch_size = 10
+    lr = 0.0001
+    lr_decay = 0.5
+    decay_every = 10
+    beta1 = 0.9
+    n_epoch = 200
+    print_freq_step = 200
 
-    Labels
-    -------
-    whole/complete tumor: 1 2 4
-    core: 1 4
-    enhance: 4
-    """
-
-    for folder in folder_hgg:
-        print("Loading %s" % folder)
-        files = tl.files.load_file_list(path=folder, regx='\.gz', printable=False)
-        # print(files)
-        for f in files:
-            if 'flair.' in f:
-                img_flair = nib.load(os.path.join(folder, f))
-            elif 't1.' in f:
-                img_t1 = nib.load(os.path.join(folder, f))
-            elif 't1ce.' in f:
-                img_t1c = nib.load(os.path.join(folder, f))
-            elif 't2.' in f:
-                img_t2 = nib.load(os.path.join(folder, f))
-            elif 'seg.' in f:
-                img_seg = nib.load(os.path.join(folder, f))
-            else:
-                exit("unknow scanning")
-
-    exit()
+    ###======================== SHOW DATA ===================================###
+    # show one slice
+    X = np.asarray(X_train[80])
+    y = np.asarray(y_train[80])
+    # print(X.shape, X.min(), X.max()) # (240, 240, 4) -0.380588 2.62761
+    # print(y.shape, y.min(), y.max()) # (240, 240, 1) 0 1
+    nw, nh, nz = X.shape
+    vis_imgs(X, y, 'samples/{}/_train_im.png'.format(task))
+    # show data augumentation results
+    for i in range(10):
+        x_flair, x_t1, x_t1ce, x_t2, label = distort_imgs([X[:,:,0,np.newaxis], X[:,:,1,np.newaxis],
+                X[:,:,2,np.newaxis], X[:,:,3,np.newaxis], y])#[:,:,np.newaxis]])
+        # print(x_flair.shape, x_t1.shape, x_t1ce.shape, x_t2.shape, label.shape) # (240, 240, 1) (240, 240, 1) (240, 240, 1) (240, 240, 1) (240, 240, 1)
+        X_dis = np.concatenate((x_flair, x_t1, x_t1ce, x_t2), axis=2)
+        # print(X_dis.shape, X_dis.min(), X_dis.max()) # (240, 240, 4) -0.380588233471 2.62376139209
+        vis_imgs(X_dis, label, 'samples/{}/_train_im_aug{}.png'.format(task, i))
 
     with tf.device('/cpu:0'):
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        with tf.device('/gpu:0'): #<- remove this if you train on CPU or other GPU
-            ###======================== DEFIINE MODEL ===============================###
-            batch_size = 10
-            ## image range from [0, 1]. nz is 4 as we input all Flair, T1, T1c and T2,
+        with tf.device('/gpu:0'): #<- remove it if you train on CPU or other GPU
+            ###======================== DEFIINE MODEL =======================###
+            ## nz is 4 as we input all Flair, T1, T1c and T2.
             t_image = tf.placeholder('float32', [batch_size, nw, nh, nz], name='input_image')
             ## labels are either 0 or 1
             t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
-            ## Train inference
-            net = u_net(t_image, is_train=True, reuse=False, pad='SAME', n_out=1)
-            ## Test inference
-            net_test = u_net(t_image, is_train=False, reuse=True, pad='SAME', n_out=1)
-            net.print_layers()
+            ## train inference
+            net = model.u_net(t_image, is_train=True, reuse=False, pad='SAME', n_out=1)
+            ## test inference
+            net_test = model.u_net(t_image, is_train=False, reuse=True, pad='SAME', n_out=1)
 
-            ###======================== DEFINE LOSS =================================###
-            ## Train losses
-                # out_seg = tf.expand_dims(net.outputs[:,:,:,0], axis=3)  REMOVE
+            ###======================== DEFINE LOSS =========================###
+            ## train losses
             out_seg = net.outputs
             dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, epsilon=1e-10)
             iou_loss = 1 - tl.cost.iou_coe(out_seg, t_seg)
             dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg)
+            loss = dice_loss
 
-            loss = dice_loss # training loss
-
-            ## Test losses
-                # test_out_seg = tf.expand_dims(net_test.outputs[:,:,:,0], axis=3)  REMOVE
+            ## test losses
             test_out_seg = net_test.outputs
             test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, epsilon=1e-10)
             test_iou_loss = 1 - tl.cost.iou_coe(test_out_seg, t_seg)
             test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg)
 
-        ###======================== DEFINE TRAIN OPTS ===========================###
-        lr = 0.00001
-        lr_decay = 0.5
-        decay_every = 10
-        beta1 = 0.9
-        n_epoch = 200
-        print_freq_step = 100
-
+        ###======================== DEFINE TRAIN OPTS =======================###
         t_vars = tl.layers.get_variables_with_name('u_net', True, True)
         with tf.device('/gpu:0'):
             with tf.variable_scope('learning_rate'):
                 lr_v = tf.Variable(lr, trainable=False)
             train_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(loss, var_list=t_vars)
 
-        ###======================== TRAINING ====================================###
+        ###======================== LOAD MODEL ==============================###
         tl.layers.initialize_global_variables(sess)
+        ## load existing model if possible
+        tl.files.load_and_assign_npz(sess=sess, name=save_dir+'/u_net_{}.npz'.format(task), network=net)
 
-        ## Load previous model if exists
-        tl.files.load_and_assign_npz(sess=sess, name=save_dir+'/u_net_{}_{}.npz'.format(label_type, data_type), network=net)
-
+        ###======================== TRAINING ================================###
         for epoch in range(0, n_epoch+1):
             epoch_time = time.time()
             ## Update decay learning rate at the beginning of every epoch
@@ -143,29 +137,26 @@ def main(label_type, data_type):
                 log = " ** new learning rate: %f" % (lr * new_lr_decay)
                 print(log)
             elif epoch == 0:
+                sess.run(tf.assign(lr_v, lr))
                 log = " ** init lr: %f  decay_every_epoch: %d, lr_decay: %f" % (lr, decay_every, lr_decay)
                 print(log)
 
-            ## Train loop
             total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
             for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train, batch_size=batch_size, shuffle=True):
                 images, labels = batch
-
                 step_time = time.time()
-                ## Data augumentation for a batch of Flair, T1, T1c, T2 images
-                ## and label images synchronously. You can define your own
-                ## method here.
-                data = threading_data([_ for _ in zip(images[:,:,:,0, np.newaxis],
+                ## data augumentation for a batch of Flair, T1, T1c, T2 images
+                # and label maps synchronously.
+                data = tl.prepro.threading_data([_ for _ in zip(images[:,:,:,0, np.newaxis],
                         images[:,:,:,1, np.newaxis], images[:,:,:,2, np.newaxis],
                         images[:,:,:,3, np.newaxis], labels)],
-                        fn=distort_imgs, label=label_type)
-                # print(data.shape)
-                # data = data.transpose((1,0,2,3,4))    REMOVE
-                # print(data.shape)
+                        fn=distort_imgs) # (10, 5, 240, 240, 1)
                 b_images = data[:,0:4,:,:,:]  # (10, 4, 240, 240, 1)
+                b_labels = data[:,4,:,:,:]
                 b_images = b_images.transpose((0,2,3,1,4))
                 b_images.shape = (batch_size, nw, nh, nz)
-                b_labels = data[:,4,:,:,:]
+                ## you can show the data augumentation result here:
+                # vis_imgs(b_images[0], b_labels[0], 'samples/{}/_tmp.png'.format(task))
 
                 ## Update network
                 _, _dice, _iou, _diceh, out = sess.run([train_op,
@@ -175,62 +166,49 @@ def main(label_type, data_type):
                 n_batch += 1
 
                 if n_batch % print_freq_step == 0:
-                    print("Epoch %d step %d [0: (1-dice): %f (1-iou): %f hard-dice: %f] took %fs (with distortion)" %
-                            (epoch, n_batch, _dice, _iou, _diceh, time.time()-step_time))
+                    print("Epoch %d step %d [(1-dice): %f (1-iou): %f hard-dice: %f] took %fs (with distortion)"
+                    % (epoch, n_batch, _dice,  _iou, _diceh, time.time()-step_time))
 
+                ## check model fail
                 # if np.isnan(_dice):
                 #     exit(" ** NaN loss found during training, stop training" % str(err))  REMOVE
                 # if np.isnan(out).any():
                 #     exit(" ** NaN found in output images during training, stop training")
 
-            print(" ** Epoch [%d/%d] train [0-(1-dice): %f (1-iou): %f hard-dice: %f] took %fs (with distortion)" %
+            print(" ** Epoch [%d/%d] train [(1-dice): %f (1-iou): %f hard-dice: %f] took %fs (with distortion)" %
                     (epoch, n_epoch, total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch, time.time()-epoch_time))
 
-            ## Save training images of Flair, T1, T1c, T2, label and prediction in order
-            tl.vis.save_images(np.asarray([b_images[0][:,:,0,np.newaxis],
-                b_images[0][:,:,1,np.newaxis], b_images[0][:,:,2,np.newaxis],
-                b_images[0][:,:,3,np.newaxis], b_labels[0], out[0,:,:,0,np.newaxis]]), size=(1, 6),
-                image_path="samples/images_{}_{}_{}/train_{}.png".format(mode, label_type, data_type, epoch))
+            ## save a training set result
+            vis_imgs(b_images[0], out[0], "samples/{}/train_{}.png".format(task, epoch))
 
-            ##======================== Evaluation ========================##
+            ###======================== EVALUATION ==========================###
             total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
-            for batch in tl.iterate.minibatches(inputs=X_test, targets=y_test, batch_size=batch_size, shuffle=False):
+            for batch in tl.iterate.minibatches(inputs=X_test, targets=y_test, batch_size=batch_size, shuffle=True):
                 b_images, b_labels = batch
-                # b_images = threading_data(b_images, fn=normalize_img) # [0, 255]->[0, 1] # if we already normalized the images, remove this line
                 _dice, _iou, _diceh, out = sess.run([test_dice_loss,
                         test_iou_loss, test_dice_hard, net_test.outputs],
                         {t_image: b_images, t_seg: b_labels})
                 total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
                 n_batch += 1
 
-            print(" **  test [0-(1-dice): %f (1-iou): %f hard-dice: %f] took %fs (no distortion)" %
+            print(" **  test [(1-dice): %f (1-iou): %f hard-dice: %f] took %fs (no distortion)" %
                     (total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch,
                     time.time()-epoch_time))
-            print("    for {} tumor , {} fold".format(label_type, data_type))
+            print("    task: {}".format(task))
 
-            ## Save testing images of Flair, T1, T1c, T2, label and prediction in order
-            tl.vis.save_images(np.asarray([b_images[0][:,:,0,np.newaxis],
-                b_images[0][:,:,1,np.newaxis], b_images[0][:,:,2,np.newaxis],
-                b_images[0][:,:,3,np.newaxis], b_labels[0], out[0,:,:,0,np.newaxis]]), size=(1, 6),
-                image_path="samples/images_{}_{}/test_{}.png".format(label_type, data_type, epoch))
+            ## save a test set result
+            vis_imgs(b_images[0], out[0], "samples/{}/test_{}.png".format(task, epoch))
 
-            ##======================== SAVE MODEL ========================##
-            tl.files.save_npz(net.all_params, name=save_dir+'/u_net_{}_{}.npz'.format(label_type, data_type), sess=sess)
+            ###======================== SAVE MODEL ===-======================###
+            tl.files.save_npz(net.all_params, name=save_dir+'/u_net_{}.npz'.format(task), sess=sess)
             print("[*] Save checkpoints SUCCESS!")
 
 if __name__ == "__main__":
-    ###======================== SELECT DATASET ==============================###
-    ## you can use your own dataset with this code
     import argparse
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--label', type=str, default='whole', help='whole(1,2,3,4), \
-        core(1,3,4), enhance(4), label(1~4), label234 [What kind of tumor do you want to predict]')
-                    # whole: 1 2 3 4;  core: 1 3 4;  enhance: 4
-    parser.add_argument('--data', type=str, default='f5', help='f1, f2, f3, f4, f5, \
-        all, debug [Which fold is the test set]')
-                    # f1~5: which fold as testing set; all: mean all data are training set
+    parser.add_argument('--task', type=str, default='all', help='all, necrotic, edema, enhance')
+
     args = parser.parse_args()
 
-    ###======================== START =======================================###
-    main(args.label, args.data)
+    main(args.task)
