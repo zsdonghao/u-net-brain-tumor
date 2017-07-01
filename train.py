@@ -9,12 +9,19 @@ import os, time, model
 def distort_imgs(data):
     """ data augumentation """
     x1, x2, x3, x4, y = data
-    x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y], axis=1, is_random=True) # left right
-    x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y], alpha=255 * 3, sigma=255 * 0.15, is_random=True)
-    x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=20, is_random=True, fill_mode='constant')
-    x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10, hrg=0.10, is_random=True, fill_mode='constant')
-    x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05, is_random=True, fill_mode='constant')
-    x1, x2, x3, x4, y = tl.prepro.zoom_multi([x1, x2, x3, x4, y], zoom_range=[0.90, 1.10], is_random=True, fill_mode='constant')
+    x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
+                            axis=1, is_random=True) # left right
+    x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y],
+                            alpha=255 * 3, sigma=255 * 0.15, is_random=True)
+    x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=20,
+                            is_random=True, fill_mode='constant') # nearest
+    x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10,
+                            hrg=0.10, is_random=True, fill_mode='constant')
+    x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05,
+                            is_random=True, fill_mode='constant')
+    x1, x2, x3, x4, y = tl.prepro.zoom_multi([x1, x2, x3, x4, y],
+                            zoom_range=[0.90, 1.10], is_random=True,
+                            fill_mode='constant')
     return x1, x2, x3, x4, y
 
 def vis_imgs(X, y, path):
@@ -142,7 +149,8 @@ def main(task='necrotic'):
                 print(log)
 
             total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
-            for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train, batch_size=batch_size, shuffle=True):
+            for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train,
+                                        batch_size=batch_size, shuffle=True):
                 images, labels = batch
                 step_time = time.time()
                 ## data augumentation for a batch of Flair, T1, T1c, T2 images
@@ -183,7 +191,8 @@ def main(task='necrotic'):
 
             ###======================== EVALUATION ==========================###
             total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
-            for batch in tl.iterate.minibatches(inputs=X_test, targets=y_test, batch_size=batch_size, shuffle=True):
+            for batch in tl.iterate.minibatches(inputs=X_test, targets=y_test,
+                                            batch_size=batch_size, shuffle=True):
                 b_images, b_labels = batch
                 _dice, _iou, _diceh, out = sess.run([test_dice_loss,
                         test_iou_loss, test_dice_hard, net_test.outputs],
@@ -208,7 +217,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--task', type=str, default='all', help='all, necrotic, edema, enhance')
-    # working: all edema 
+    # working: all edema
 
     args = parser.parse_args()
 
