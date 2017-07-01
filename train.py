@@ -208,6 +208,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--task', type=str, default='all', help='all, necrotic, edema, enhance')
+    # working: all edema 
 
     args = parser.parse_args()
 
