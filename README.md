@@ -50,15 +50,3 @@ We train HGG and LGG together, as one network only have one task, set the `task`
 ```
 python train.py --task=all
 ```
-
-### Citation
-If you find this repo is useful, please cite our paper.
-
-```
-@article{dong2016,
-   journal = {MIUA},
-   author = {Dong, Hao and Liu, Fangde and Mo, Yuanhan},
-   title = {{Automatic Brain Tumor Detection and Segmentation Using U-Net Based Fully Convolutional Networks}},
-   year = {2016}
-}
-```
