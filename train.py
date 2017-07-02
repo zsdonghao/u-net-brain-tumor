@@ -73,10 +73,10 @@ def main(task='necrotic'):
     batch_size = 10
     lr = 0.0001
     lr_decay = 0.5
-    decay_every = 10
+    decay_every = 20
     beta1 = 0.9
-    n_epoch = 200
-    print_freq_step = 200
+    n_epoch = 100
+    print_freq_step = 1
 
     ###======================== SHOW DATA ===================================###
     # show one slice
@@ -111,15 +111,15 @@ def main(task='necrotic'):
             ###======================== DEFINE LOSS =========================###
             ## train losses
             out_seg = net.outputs
-            dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, epsilon=1e-10)
-            iou_loss = 1 - tl.cost.iou_coe(out_seg, t_seg)
+            dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, 'jaccard', epsilon=1e-5)
+            iou_loss = tl.cost.iou_coe(out_seg, t_seg)
             dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg)
             loss = dice_loss
 
             ## test losses
             test_out_seg = net_test.outputs
-            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, epsilon=1e-10)
-            test_iou_loss = 1 - tl.cost.iou_coe(test_out_seg, t_seg)
+            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, 'jaccard', epsilon=1e-5)
+            test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg)
             test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg)
 
         ###======================== DEFINE TRAIN OPTS =======================###
@@ -174,7 +174,7 @@ def main(task='necrotic'):
                 n_batch += 1
 
                 if n_batch % print_freq_step == 0:
-                    print("Epoch %d step %d [(1-dice): %f (1-iou): %f hard-dice: %f] took %fs (with distortion)"
+                    print("Epoch %d step %d [(1-dice): %f iou: %f hard-dice: %f] took %fs (with distortion)"
                     % (epoch, n_batch, _dice,  _iou, _diceh, time.time()-step_time))
 
                 ## check model fail
@@ -183,7 +183,7 @@ def main(task='necrotic'):
                 # if np.isnan(out).any():
                 #     exit(" ** NaN found in output images during training, stop training")
 
-            print(" ** Epoch [%d/%d] train [(1-dice): %f (1-iou): %f hard-dice: %f] took %fs (with distortion)" %
+            print(" ** Epoch [%d/%d] train [(1-dice): %f iou: %f hard-dice: %f] took %fs (with distortion)" %
                     (epoch, n_epoch, total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch, time.time()-epoch_time))
 
             ## save a training set result
@@ -200,17 +200,14 @@ def main(task='necrotic'):
                 total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
                 n_batch += 1
 
-            print(" **  test [(1-dice): %f (1-iou): %f hard-dice: %f] took %fs (no distortion)" %
-                    (total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch,
-                    time.time()-epoch_time))
-            print("    task: {}".format(task))
-
+            print(" **"+" "*15+"test [(1-dice): %f iou: %f hard-dice: %f] (no distortion)" %
+                    (total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch))
+            print(" task: {}".format(task))
             ## save a test set result
             vis_imgs(b_images[0], out[0], "samples/{}/test_{}.png".format(task, epoch))
 
-            ###======================== SAVE MODEL ===-======================###
+            ###======================== SAVE MODEL ==========================###
             tl.files.save_npz(net.all_params, name=save_dir+'/u_net_{}.npz'.format(task), sess=sess)
-            print("[*] Save checkpoints SUCCESS!")
 
 if __name__ == "__main__":
     import argparse
@@ -218,7 +215,17 @@ if __name__ == "__main__":
 
     parser.add_argument('--task', type=str, default='all', help='all, necrotic, edema, enhance')
     # working: all edema
+    # all:
 
+    # necrotic:
+    #   ** Epoch [19/200] train [(1-dice): 0.251628 (1-iou): 0.423741 hard-dice: 0.719396] took 1400.872402s (with distortion)
+    #   **  test [(1-dice): 0.589061 (1-iou): 0.727464 hard-dice: 0.396992] took 1436.320652s (no distortion)
+    # edema:
+    #   ** Epoch [36/200] train [(1-dice): 0.094675 (1-iou): 0.245576 hard-dice: 0.858592] took 1299.347027s (with distortion)
+    #   **  test [(1-dice): 0.320639 (1-iou): 0.510404 hard-dice: 0.643818] took 1335.845194s (no distortion)
+    # enhance
+     # ** Epoch [2/200] train [(1-dice): 0.324237 iou: 0.513940 hard-dice: 0.640992] took 1120.346134s (with distortion)
+     # **  test [(1-dice): 0.501660 iou: 0.389062 hard-dice: 0.501100] took 1156.695573s (no distortion)
     args = parser.parse_args()
 
     main(args.task)

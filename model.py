@@ -87,15 +87,14 @@ def u_net(x, is_train=False, reuse=False, pad='VALID', n_out=2):
         conv1 = Conv2d(conv1, 64, (3, 3), act=tf.nn.relu, padding=pad,
                     W_init=w_init, b_init=b_init, name='uconv1_2')
 
-        conv1 = Conv2d(conv1, n_out, (1, 1), act=None, name='uconv1')
+        conv1 = Conv2d(conv1, n_out, (1, 1), act=tf.nn.sigmoid, name='uconv1')
         print(" * Output: %s" % conv1.outputs)
 
         # logits0 = conv1.outputs[:,:,:,0]            # segmentataion
         # logits1 = conv1.outputs[:,:,:,1]            # edge
         # logits0 = tf.expand_dims(logits0, axis=3)
         # logits1 = tf.expand_dims(logits1, axis=3)
-        conv1.outputs = tf.nn.sigmoid(conv1.outputs)
-    return conv1 #, logits0, logits1
+    return conv1
 
 def u_net_bn(x, is_train=False, reuse=False, batch_size=None, pad='SAME'):
     """image to image translation via conditional adversarial learning"""
