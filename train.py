@@ -76,7 +76,7 @@ def main(task='necrotic'):
     decay_every = 20
     beta1 = 0.9
     n_epoch = 100
-    print_freq_step = 1
+    print_freq_step = 200
 
     ###======================== SHOW DATA ===================================###
     # show one slice
@@ -111,14 +111,14 @@ def main(task='necrotic'):
             ###======================== DEFINE LOSS =========================###
             ## train losses
             out_seg = net.outputs
-            dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, 'jaccard', epsilon=1e-5)
+            dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg)#, 'jaccard', epsilon=1e-5)
             iou_loss = tl.cost.iou_coe(out_seg, t_seg)
             dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg)
             loss = dice_loss
 
             ## test losses
             test_out_seg = net_test.outputs
-            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, 'jaccard', epsilon=1e-5)
+            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg)#, 'jaccard', epsilon=1e-5)
             test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg)
             test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg)
 
@@ -178,10 +178,10 @@ def main(task='necrotic'):
                     % (epoch, n_batch, _dice,  _iou, _diceh, time.time()-step_time))
 
                 ## check model fail
-                # if np.isnan(_dice):
-                #     exit(" ** NaN loss found during training, stop training" % str(err))  REMOVE
-                # if np.isnan(out).any():
-                #     exit(" ** NaN found in output images during training, stop training")
+                if np.isnan(_dice):
+                    exit(" ** NaN loss found during training, stop training" % str(err))  #REMOVE
+                if np.isnan(out).any():
+                    exit(" ** NaN found in output images during training, stop training")
 
             print(" ** Epoch [%d/%d] train [(1-dice): %f iou: %f hard-dice: %f] took %fs (with distortion)" %
                     (epoch, n_epoch, total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch, time.time()-epoch_time))
