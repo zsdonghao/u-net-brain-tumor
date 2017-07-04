@@ -1,11 +1,8 @@
-import pickle
 import tensorlayer as tl
 import numpy as np
-import os
+import os, csv, random, gc, pickle
 import nibabel as nib
-import csv
-import random
-import gc
+
 
 """
 In seg file
@@ -22,7 +19,7 @@ core: 1 4
 enhance: 4
 """
 ###============================= SETTINGS ===================================###
-DATA_SIZE = 'half' # (half or all)
+DATA_SIZE = 'half' # (small, half or all)
 
 save_dir = "data/train_dev_all/"
 if not os.path.exists(save_dir):
@@ -51,8 +48,11 @@ if DATA_SIZE == 'all':
     HGG_path_list = tl.files.load_folder_list(path=HGG_data_path)
     LGG_path_list = tl.files.load_folder_list(path=LGG_data_path)
 elif DATA_SIZE == 'half':
-    HGG_path_list = tl.files.load_folder_list(path=HGG_data_path)[0:100] # DEBUG WITH SMALL DATA
+    HGG_path_list = tl.files.load_folder_list(path=HGG_data_path)[0:100]# DEBUG WITH SMALL DATA
     LGG_path_list = tl.files.load_folder_list(path=LGG_data_path)[0:30] # DEBUG WITH SMALL DATA
+elif DATA_SIZE == 'small':
+    HGG_path_list = tl.files.load_folder_list(path=HGG_data_path)[0:50] # DEBUG WITH SMALL DATA
+    LGG_path_list = tl.files.load_folder_list(path=LGG_data_path)[0:20] # DEBUG WITH SMALL DATA
 else:
     exit("Unknow DATA_SIZE")
 print(len(HGG_path_list), len(LGG_path_list)) #210 #75
@@ -94,7 +94,15 @@ elif DATA_SIZE == 'half':
     dev_index_LGG = index_LGG[-10:-5]  # DEBUG WITH SMALL DATA
     test_index_LGG = index_LGG[-5:]
     tr_index_LGG = index_LGG[:-10]
-
+elif DATA_SIZE == 'small':
+    dev_index_HGG = index_HGG[35:42]   # DEBUG WITH SMALL DATA
+    # print(index_HGG, dev_index_HGG)
+    # exit()
+    test_index_HGG = index_HGG[41:42]
+    tr_index_HGG = index_HGG[0:35]
+    dev_index_LGG = index_LGG[7:10]    # DEBUG WITH SMALL DATA
+    test_index_LGG = index_LGG[9:10]
+    tr_index_LGG = index_LGG[0:7]
 
 survival_id_dev_HGG = [survival_id_from_HGG[i] for i in dev_index_HGG]
 survival_id_test_HGG = [survival_id_from_HGG[i] for i in test_index_HGG]

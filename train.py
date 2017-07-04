@@ -108,7 +108,7 @@ def main(task='all'):
     decay_every = 20
     beta1 = 0.9
     n_epoch = 100
-    print_freq_step = 10
+    print_freq_step = 100
 
     ###======================== SHOW DATA ===================================###
     # show one slice
