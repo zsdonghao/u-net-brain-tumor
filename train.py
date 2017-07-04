@@ -6,21 +6,39 @@ import tensorlayer as tl
 import numpy as np
 import os, time, model
 
+# def distort_imgs(data):
+#     """ data augumentation """
+#     x1, x2, x3, x4, y = data
+#     x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
+#                             axis=1, is_random=True) # left right
+#     x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y],
+#                             alpha=255 * 3, sigma=255 * 0.15, is_random=True)
+#     x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=20,
+#                             is_random=True, fill_mode='constant') # nearest, constant
+#     x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10,
+#                             hrg=0.10, is_random=True, fill_mode='constant')
+#     x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05,
+#                             is_random=True, fill_mode='constant')
+#     x1, x2, x3, x4, y = tl.prepro.zoom_multi([x1, x2, x3, x4, y],
+#                             zoom_range=[0.90, 1.10], is_random=True,
+#                             fill_mode='constant')
+#     return x1, x2, x3, x4, y
+
 def distort_imgs(data):
     """ data augumentation """
     x1, x2, x3, x4, y = data
     x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
                             axis=1, is_random=True) # left right
     x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y],
-                            alpha=255 * 3, sigma=255 * 0.15, is_random=True)
-    x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=20,
-                            is_random=True, fill_mode='constant') # nearest
+                            alpha=240*3, sigma=240*0.15, is_random=True)
+    x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=10,
+                            is_random=True, fill_mode='constant') # nearest, constant
     x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10,
                             hrg=0.10, is_random=True, fill_mode='constant')
-    x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05,
-                            is_random=True, fill_mode='constant')
+    # x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05,
+    #                         is_random=True, fill_mode='constant')
     x1, x2, x3, x4, y = tl.prepro.zoom_multi([x1, x2, x3, x4, y],
-                            zoom_range=[0.90, 1.10], is_random=True,
+                            zoom_range=[0.95, 1.05], is_random=True,
                             fill_mode='constant')
     return x1, x2, x3, x4, y
 
@@ -34,7 +52,19 @@ def vis_imgs(X, y, path):
         X[:,:,3,np.newaxis], y]), size=(1, 5),
         image_path=path)
 
-def main(task='necrotic'):
+def vis_imgs2(X, y_, y, path):
+    """ show one slice with target"""
+    if y.ndim == 2:
+        y = y[:,:,np.newaxis]
+    if y_.ndim == 2:
+        y_ = y_[:,:,np.newaxis]
+    assert X.ndim == 3
+    tl.vis.save_images(np.asarray([X[:,:,0,np.newaxis],
+        X[:,:,1,np.newaxis], X[:,:,2,np.newaxis],
+        X[:,:,3,np.newaxis], y_, y]), size=(1, 6),
+        image_path=path)
+
+def main(task='all'):
     ## Create folder to save trained model and result images
     save_dir = "checkpoint"
     tl.files.exists_or_mkdir(save_dir)
@@ -46,7 +76,7 @@ def main(task='necrotic'):
     # there are 4 labels in targets:
     # Label 0: background
     # Label 1: necrotic and non-enhancing tumor
-    # Label 2: edema 
+    # Label 2: edema
     # Label 4: enhancing tumor
     import prepare_data_with_valid as dataset
     X_train = dataset.X_train_input
@@ -76,7 +106,7 @@ def main(task='necrotic'):
     decay_every = 20
     beta1 = 0.9
     n_epoch = 100
-    print_freq_step = 200
+    print_freq_step = 1
 
     ###======================== SHOW DATA ===================================###
     # show one slice
@@ -111,16 +141,16 @@ def main(task='necrotic'):
             ###======================== DEFINE LOSS =========================###
             ## train losses
             out_seg = net.outputs
-            dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg)#, 'jaccard', epsilon=1e-5)
-            iou_loss = tl.cost.iou_coe(out_seg, t_seg)
-            dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg)
+            dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
+            iou_loss = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
+            dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
             loss = dice_loss
 
             ## test losses
             test_out_seg = net_test.outputs
-            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg)#, 'jaccard', epsilon=1e-5)
-            test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg)
-            test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg)
+            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
+            test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg, axis=[0,1,2,3])
+            test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg, axis=[0,1,2,3])
 
         ###======================== DEFINE TRAIN OPTS =======================###
         t_vars = tl.layers.get_variables_with_name('u_net', True, True)
@@ -137,7 +167,7 @@ def main(task='necrotic'):
         ###======================== TRAINING ================================###
         for epoch in range(0, n_epoch+1):
             epoch_time = time.time()
-            ## Update decay learning rate at the beginning of every epoch
+            ## update decay learning rate at the beginning of a epoch
             if epoch !=0 and (epoch % decay_every == 0):
                 new_lr_decay = lr_decay ** (epoch // decay_every)
                 sess.run(tf.assign(lr_v, lr * new_lr_decay))
@@ -163,31 +193,42 @@ def main(task='necrotic'):
                 b_labels = data[:,4,:,:,:]
                 b_images = b_images.transpose((0,2,3,1,4))
                 b_images.shape = (batch_size, nw, nh, nz)
-                ## you can show the data augumentation result here:
-                # vis_imgs(b_images[0], b_labels[0], 'samples/{}/_tmp.png'.format(task))
 
-                ## Update network
+                ## update network
                 _, _dice, _iou, _diceh, out = sess.run([train_op,
                         dice_loss, iou_loss, dice_hard, net.outputs],
                         {t_image: b_images, t_seg: b_labels})
                 total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
                 n_batch += 1
 
+                ## you can show the predition here:
+                # vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_tmp.png".format(task))
+                # exit()
+
+                if _dice == 1: # DEBUG
+                    print("DEBUG")
+                    vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
+
                 if n_batch % print_freq_step == 0:
-                    print("Epoch %d step %d [(1-dice): %f iou: %f hard-dice: %f] took %fs (with distortion)"
-                    % (epoch, n_batch, _dice,  _iou, _diceh, time.time()-step_time))
+                    print("Epoch %d step %d (1-dice): %f hard-dice: %f iou: %f took %fs (2d with distortion)"
+                    % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
 
                 ## check model fail
                 if np.isnan(_dice):
-                    exit(" ** NaN loss found during training, stop training" % str(err))  #REMOVE
+                    exit(" ** NaN loss found during training, stop training")
                 if np.isnan(out).any():
                     exit(" ** NaN found in output images during training, stop training")
 
-            print(" ** Epoch [%d/%d] train [(1-dice): %f iou: %f hard-dice: %f] took %fs (with distortion)" %
-                    (epoch, n_epoch, total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch, time.time()-epoch_time))
+            print(" ** Epoch [%d/%d] train (1-dice): %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
+                    (epoch, n_epoch, total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch, time.time()-epoch_time))
 
-            ## save a training set result
-            vis_imgs(b_images[0], out[0], "samples/{}/train_{}.png".format(task, epoch))
+            ## save a predition of training set
+            for i in range(batch_size):
+                if np.max(b_images[i]) > 0:
+                    vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}.png".format(task, epoch))
+                    break
+                elif i == batch_size-1:
+                    vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}.png".format(task, epoch))
 
             ###======================== EVALUATION ==========================###
             total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
@@ -200,11 +241,16 @@ def main(task='necrotic'):
                 total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
                 n_batch += 1
 
-            print(" **"+" "*15+"test [(1-dice): %f iou: %f hard-dice: %f] (no distortion)" %
-                    (total_dice/n_batch, total_iou/n_batch, total_dice_hard/n_batch))
+            print(" **"+" "*17+"test (1-dice): %f hard-dice: %f iou: %f (2d no distortion)" %
+                    (total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch))
             print(" task: {}".format(task))
-            ## save a test set result
-            vis_imgs(b_images[0], out[0], "samples/{}/test_{}.png".format(task, epoch))
+            ## save a predition of test set
+            for i in range(batch_size):
+                if np.max(b_images[i]) > 0:
+                    vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
+                    break
+                elif i == batch_size-1:
+                    vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
 
             ###======================== SAVE MODEL ==========================###
             tl.files.save_npz(net.all_params, name=save_dir+'/u_net_{}.npz'.format(task), sess=sess)
@@ -214,18 +260,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--task', type=str, default='all', help='all, necrotic, edema, enhance')
-    # working: all edema
-    # all:
 
-    # necrotic:
-    #   ** Epoch [19/200] train [(1-dice): 0.251628 (1-iou): 0.423741 hard-dice: 0.719396] took 1400.872402s (with distortion)
-    #   **  test [(1-dice): 0.589061 (1-iou): 0.727464 hard-dice: 0.396992] took 1436.320652s (no distortion)
-    # edema:
-    #   ** Epoch [36/200] train [(1-dice): 0.094675 (1-iou): 0.245576 hard-dice: 0.858592] took 1299.347027s (with distortion)
-    #   **  test [(1-dice): 0.320639 (1-iou): 0.510404 hard-dice: 0.643818] took 1335.845194s (no distortion)
-    # enhance
-     # ** Epoch [2/200] train [(1-dice): 0.324237 iou: 0.513940 hard-dice: 0.640992] took 1120.346134s (with distortion)
-     # **  test [(1-dice): 0.501660 iou: 0.389062 hard-dice: 0.501100] took 1156.695573s (no distortion)
     args = parser.parse_args()
 
     main(args.task)
