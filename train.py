@@ -30,15 +30,17 @@ def distort_imgs(data):
     x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
                             axis=1, is_random=True) # left right
     x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y],
-                            alpha=240*3, sigma=240*0.15, is_random=True)
+                            # alpha=720, sigma=24, is_random=True)
+                            # alpha=255 * 3, sigma=255 * 0.15, is_random=True)
+                            alpha=765, sigma=38, is_random=True)
     x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=10,
                             is_random=True, fill_mode='constant') # nearest, constant
     x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10,
                             hrg=0.10, is_random=True, fill_mode='constant')
-    # x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05,
-    #                         is_random=True, fill_mode='constant')
+    x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05,
+                            is_random=True, fill_mode='constant')
     x1, x2, x3, x4, y = tl.prepro.zoom_multi([x1, x2, x3, x4, y],
-                            zoom_range=[0.95, 1.05], is_random=True,
+                            zoom_range=[0.9, 1.1], is_random=True,
                             fill_mode='constant')
     return x1, x2, x3, x4, y
 
@@ -53,7 +55,7 @@ def vis_imgs(X, y, path):
         image_path=path)
 
 def vis_imgs2(X, y_, y, path):
-    """ show one slice with target"""
+    """ show one slice with target """
     if y.ndim == 2:
         y = y[:,:,np.newaxis]
     if y_.ndim == 2:
@@ -106,7 +108,7 @@ def main(task='all'):
     decay_every = 20
     beta1 = 0.9
     n_epoch = 100
-    print_freq_step = 1
+    print_freq_step = 10
 
     ###======================== SHOW DATA ===================================###
     # show one slice
@@ -205,12 +207,12 @@ def main(task='all'):
                 # vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_tmp.png".format(task))
                 # exit()
 
-                if _dice == 1: # DEBUG
-                    print("DEBUG")
-                    vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
+                # if _dice == 1: # DEBUG
+                #     print("DEBUG")
+                #     vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
 
                 if n_batch % print_freq_step == 0:
-                    print("Epoch %d step %d (1-dice): %f hard-dice: %f iou: %f took %fs (2d with distortion)"
+                    print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)"
                     % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
 
                 ## check model fail
@@ -219,7 +221,7 @@ def main(task='all'):
                 if np.isnan(out).any():
                     exit(" ** NaN found in output images during training, stop training")
 
-            print(" ** Epoch [%d/%d] train (1-dice): %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
+            print(" ** Epoch [%d/%d] train 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
                     (epoch, n_epoch, total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch, time.time()-epoch_time))
 
             ## save a predition of training set
@@ -241,7 +243,7 @@ def main(task='all'):
                 total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
                 n_batch += 1
 
-            print(" **"+" "*17+"test (1-dice): %f hard-dice: %f iou: %f (2d no distortion)" %
+            print(" **"+" "*17+"test 1-dice: %f hard-dice: %f iou: %f (2d no distortion)" %
                     (total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch))
             print(" task: {}".format(task))
             ## save a predition of test set

@@ -96,7 +96,8 @@ def u_net(x, is_train=False, reuse=False, pad='VALID', n_out=2):
         # logits1 = tf.expand_dims(logits1, axis=3)
     return conv1
 
-def u_net_bn(x, is_train=False, reuse=False, batch_size=None, pad='SAME'):
+
+def u_net_bn(x, is_train=False, reuse=False, batch_size=None, pad='SAME', n_out=1):
     """image to image translation via conditional adversarial learning"""
     nx = int(x._shape[1])
     ny = int(x._shape[2])
@@ -179,7 +180,7 @@ def u_net_bn(x, is_train=False, reuse=False, batch_size=None, pad='SAME'):
         # print(up0.outputs)
         # exit()
 
-        out = Conv2d(up0, 2, (1, 1), act=tf.nn.sigmoid, name='out')
+        out = Conv2d(up0, n_out, (1, 1), act=tf.nn.sigmoid, name='out')
 
         print(" * Output: %s" % out.outputs)
         # exit()
