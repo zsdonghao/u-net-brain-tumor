@@ -88,10 +88,10 @@ if DATA_SIZE == 'all':
     test_index_LGG = index_LGG[-15:]
     tr_index_LGG = index_LGG[:-30]
 elif DATA_SIZE == 'half':
-    dev_index_HGG = index_HGG[-20:-5]  # DEBUG WITH SMALL DATA
+    dev_index_HGG = index_HGG[-30:]  # DEBUG WITH SMALL DATA
     test_index_HGG = index_HGG[-5:]
-    tr_index_HGG = index_HGG[:-20]
-    dev_index_LGG = index_LGG[-10:-5]  # DEBUG WITH SMALL DATA
+    tr_index_HGG = index_HGG[:-30]
+    dev_index_LGG = index_LGG[-10:]  # DEBUG WITH SMALL DATA
     test_index_LGG = index_LGG[-5:]
     tr_index_LGG = index_LGG[:-10]
 elif DATA_SIZE == 'small':

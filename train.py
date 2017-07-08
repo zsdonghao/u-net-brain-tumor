@@ -6,34 +6,15 @@ import tensorlayer as tl
 import numpy as np
 import os, time, model
 
-# def distort_imgs(data):
-#     """ data augumentation """
-#     x1, x2, x3, x4, y = data
-#     x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
-#                             axis=1, is_random=True) # left right
-#     x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y],
-#                             alpha=255 * 3, sigma=255 * 0.15, is_random=True)
-#     x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=20,
-#                             is_random=True, fill_mode='constant') # nearest, constant
-#     x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10,
-#                             hrg=0.10, is_random=True, fill_mode='constant')
-#     x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05,
-#                             is_random=True, fill_mode='constant')
-#     x1, x2, x3, x4, y = tl.prepro.zoom_multi([x1, x2, x3, x4, y],
-#                             zoom_range=[0.90, 1.10], is_random=True,
-#                             fill_mode='constant')
-#     return x1, x2, x3, x4, y
 
-def distort_imgs(data):
+def distort_imgs(data):     # all tumors  hard-dice=83.7  dont reduce lr
     """ data augumentation """
     x1, x2, x3, x4, y = data
     x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
                             axis=1, is_random=True) # left right
     x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y],
-                            # alpha=720, sigma=24, is_random=True)
-                            # alpha=255 * 3, sigma=255 * 0.15, is_random=True)
-                            alpha=765, sigma=38, is_random=True)
-    x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=10,
+                            alpha=720, sigma=24, is_random=True)
+    x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=20,
                             is_random=True, fill_mode='constant') # nearest, constant
     x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10,
                             hrg=0.10, is_random=True, fill_mode='constant')
@@ -105,7 +86,7 @@ def main(task='all'):
     batch_size = 10
     lr = 0.0001
     lr_decay = 0.5
-    decay_every = 20
+    decay_every = 100
     beta1 = 0.9
     n_epoch = 100
     print_freq_step = 100
@@ -136,9 +117,9 @@ def main(task='all'):
             ## labels are either 0 or 1
             t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
             ## train inference
-            net = model.u_net(t_image, is_train=True, reuse=False, pad='SAME', n_out=1)
+            net = model.u_net(t_image, is_train=True, reuse=False, n_out=1)
             ## test inference
-            net_test = model.u_net(t_image, is_train=False, reuse=True, pad='SAME', n_out=1)
+            net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
 
             ###======================== DEFINE LOSS =========================###
             ## train losses
@@ -167,95 +148,95 @@ def main(task='all'):
         tl.files.load_and_assign_npz(sess=sess, name=save_dir+'/u_net_{}.npz'.format(task), network=net)
 
         ###======================== TRAINING ================================###
-        for epoch in range(0, n_epoch+1):
-            epoch_time = time.time()
-            ## update decay learning rate at the beginning of a epoch
-            if epoch !=0 and (epoch % decay_every == 0):
-                new_lr_decay = lr_decay ** (epoch // decay_every)
-                sess.run(tf.assign(lr_v, lr * new_lr_decay))
-                log = " ** new learning rate: %f" % (lr * new_lr_decay)
-                print(log)
-            elif epoch == 0:
-                sess.run(tf.assign(lr_v, lr))
-                log = " ** init lr: %f  decay_every_epoch: %d, lr_decay: %f" % (lr, decay_every, lr_decay)
-                print(log)
+    for epoch in range(0, n_epoch+1):
+        epoch_time = time.time()
+        ## update decay learning rate at the beginning of a epoch
+        if epoch !=0 and (epoch % decay_every == 0):
+            new_lr_decay = lr_decay ** (epoch // decay_every)
+            sess.run(tf.assign(lr_v, lr * new_lr_decay))
+            log = " ** new learning rate: %f" % (lr * new_lr_decay)
+            print(log)
+        elif epoch == 0:
+            sess.run(tf.assign(lr_v, lr))
+            log = " ** init lr: %f  decay_every_epoch: %d, lr_decay: %f" % (lr, decay_every, lr_decay)
+            print(log)
 
-            total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
-            for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train,
+        total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
+        for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train,
+                                    batch_size=batch_size, shuffle=True):
+            images, labels = batch
+            step_time = time.time()
+            ## data augumentation for a batch of Flair, T1, T1c, T2 images
+            # and label maps synchronously.
+            data = tl.prepro.threading_data([_ for _ in zip(images[:,:,:,0, np.newaxis],
+                    images[:,:,:,1, np.newaxis], images[:,:,:,2, np.newaxis],
+                    images[:,:,:,3, np.newaxis], labels)],
+                    fn=distort_imgs) # (10, 5, 240, 240, 1)
+            b_images = data[:,0:4,:,:,:]  # (10, 4, 240, 240, 1)
+            b_labels = data[:,4,:,:,:]
+            b_images = b_images.transpose((0,2,3,1,4))
+            b_images.shape = (batch_size, nw, nh, nz)
+
+            ## update network
+            _, _dice, _iou, _diceh, out = sess.run([train_op,
+                    dice_loss, iou_loss, dice_hard, net.outputs],
+                    {t_image: b_images, t_seg: b_labels})
+            total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
+            n_batch += 1
+
+            ## you can show the predition here:
+            # vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_tmp.png".format(task))
+            # exit()
+
+            # if _dice == 1: # DEBUG
+            #     print("DEBUG")
+            #     vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
+
+            if n_batch % print_freq_step == 0:
+                print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)"
+                % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
+
+            ## check model fail
+            if np.isnan(_dice):
+                exit(" ** NaN loss found during training, stop training")
+            if np.isnan(out).any():
+                exit(" ** NaN found in output images during training, stop training")
+
+        print(" ** Epoch [%d/%d] train 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
+                (epoch, n_epoch, total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch, time.time()-epoch_time))
+
+        ## save a predition of training set
+        for i in range(batch_size):
+            if np.max(b_images[i]) > 0:
+                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}.png".format(task, epoch))
+                break
+            elif i == batch_size-1:
+                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}.png".format(task, epoch))
+
+        ###======================== EVALUATION ==========================###
+        total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
+        for batch in tl.iterate.minibatches(inputs=X_test, targets=y_test,
                                         batch_size=batch_size, shuffle=True):
-                images, labels = batch
-                step_time = time.time()
-                ## data augumentation for a batch of Flair, T1, T1c, T2 images
-                # and label maps synchronously.
-                data = tl.prepro.threading_data([_ for _ in zip(images[:,:,:,0, np.newaxis],
-                        images[:,:,:,1, np.newaxis], images[:,:,:,2, np.newaxis],
-                        images[:,:,:,3, np.newaxis], labels)],
-                        fn=distort_imgs) # (10, 5, 240, 240, 1)
-                b_images = data[:,0:4,:,:,:]  # (10, 4, 240, 240, 1)
-                b_labels = data[:,4,:,:,:]
-                b_images = b_images.transpose((0,2,3,1,4))
-                b_images.shape = (batch_size, nw, nh, nz)
+            b_images, b_labels = batch
+            _dice, _iou, _diceh, out = sess.run([test_dice_loss,
+                    test_iou_loss, test_dice_hard, net_test.outputs],
+                    {t_image: b_images, t_seg: b_labels})
+            total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
+            n_batch += 1
 
-                ## update network
-                _, _dice, _iou, _diceh, out = sess.run([train_op,
-                        dice_loss, iou_loss, dice_hard, net.outputs],
-                        {t_image: b_images, t_seg: b_labels})
-                total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
-                n_batch += 1
+        print(" **"+" "*17+"test 1-dice: %f hard-dice: %f iou: %f (2d no distortion)" %
+                (total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch))
+        print(" task: {}".format(task))
+        ## save a predition of test set
+        for i in range(batch_size):
+            if np.max(b_images[i]) > 0:
+                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
+                break
+            elif i == batch_size-1:
+                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
 
-                ## you can show the predition here:
-                # vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_tmp.png".format(task))
-                # exit()
-
-                # if _dice == 1: # DEBUG
-                #     print("DEBUG")
-                #     vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
-
-                if n_batch % print_freq_step == 0:
-                    print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)"
-                    % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
-
-                ## check model fail
-                if np.isnan(_dice):
-                    exit(" ** NaN loss found during training, stop training")
-                if np.isnan(out).any():
-                    exit(" ** NaN found in output images during training, stop training")
-
-            print(" ** Epoch [%d/%d] train 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
-                    (epoch, n_epoch, total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch, time.time()-epoch_time))
-
-            ## save a predition of training set
-            for i in range(batch_size):
-                if np.max(b_images[i]) > 0:
-                    vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}.png".format(task, epoch))
-                    break
-                elif i == batch_size-1:
-                    vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}.png".format(task, epoch))
-
-            ###======================== EVALUATION ==========================###
-            total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
-            for batch in tl.iterate.minibatches(inputs=X_test, targets=y_test,
-                                            batch_size=batch_size, shuffle=True):
-                b_images, b_labels = batch
-                _dice, _iou, _diceh, out = sess.run([test_dice_loss,
-                        test_iou_loss, test_dice_hard, net_test.outputs],
-                        {t_image: b_images, t_seg: b_labels})
-                total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
-                n_batch += 1
-
-            print(" **"+" "*17+"test 1-dice: %f hard-dice: %f iou: %f (2d no distortion)" %
-                    (total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch))
-            print(" task: {}".format(task))
-            ## save a predition of test set
-            for i in range(batch_size):
-                if np.max(b_images[i]) > 0:
-                    vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
-                    break
-                elif i == batch_size-1:
-                    vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
-
-            ###======================== SAVE MODEL ==========================###
-            tl.files.save_npz(net.all_params, name=save_dir+'/u_net_{}.npz'.format(task), sess=sess)
+        ###======================== SAVE MODEL ==========================###
+        tl.files.save_npz(net.all_params, name=save_dir+'/u_net_{}.npz'.format(task), sess=sess)
 
 if __name__ == "__main__":
     import argparse
