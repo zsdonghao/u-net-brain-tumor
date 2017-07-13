@@ -6,10 +6,11 @@ import tensorlayer as tl
 import numpy as np
 import os, time, model
 
-
-def distort_imgs(data):     # all tumors  hard-dice=83.7  dont reduce lr
+def distort_imgs(data):
     """ data augumentation """
     x1, x2, x3, x4, y = data
+    # x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],  # previous without this, hard-dice=83.7
+    #                         axis=0, is_random=True) # up down
     x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
                             axis=1, is_random=True) # left right
     x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y],
@@ -84,9 +85,9 @@ def main(task='all'):
 
     ###======================== HYPER-PARAMETERS ============================###
     batch_size = 10
-    lr = 0.0001
-    lr_decay = 0.5
-    decay_every = 100
+    lr = 0.0001 
+    # lr_decay = 0.5
+    # decay_every = 100
     beta1 = 0.9
     n_epoch = 100
     print_freq_step = 100
@@ -151,15 +152,15 @@ def main(task='all'):
     for epoch in range(0, n_epoch+1):
         epoch_time = time.time()
         ## update decay learning rate at the beginning of a epoch
-        if epoch !=0 and (epoch % decay_every == 0):
-            new_lr_decay = lr_decay ** (epoch // decay_every)
-            sess.run(tf.assign(lr_v, lr * new_lr_decay))
-            log = " ** new learning rate: %f" % (lr * new_lr_decay)
-            print(log)
-        elif epoch == 0:
-            sess.run(tf.assign(lr_v, lr))
-            log = " ** init lr: %f  decay_every_epoch: %d, lr_decay: %f" % (lr, decay_every, lr_decay)
-            print(log)
+        # if epoch !=0 and (epoch % decay_every == 0):
+        #     new_lr_decay = lr_decay ** (epoch // decay_every)
+        #     sess.run(tf.assign(lr_v, lr * new_lr_decay))
+        #     log = " ** new learning rate: %f" % (lr * new_lr_decay)
+        #     print(log)
+        # elif epoch == 0:
+        #     sess.run(tf.assign(lr_v, lr))
+        #     log = " ** init lr: %f  decay_every_epoch: %d, lr_decay: %f" % (lr, decay_every, lr_decay)
+        #     print(log)
 
         total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
         for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train,

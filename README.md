@@ -50,3 +50,5 @@ We train HGG and LGG together, as one network only have one task, set the `task`
 ```
 python train.py --task=all
 ```
+
+Note that, if the loss stick on 1 at the beginning, it means the network doesn't converge to near-perfect accuracy, please try restart it.
