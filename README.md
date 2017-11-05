@@ -1,6 +1,6 @@
 # U-Net Brain Tumor Segmentation 
 
-This repo show you how to train a U-Net for brain tumor segmentation. By default, you need to download the training set of [BRATS 2017](http://braintumorsegmentation.org) dataset, which have 210 HGG and 75 LGG volumes, and put the data folder along with all scripts.
+This repo show you how to train a U-Net for brain tumor segmentation. By default, you need to download the training set of [BRATS 2017](http://braintumorsegmentation.org) dataset (Note that according to the license, user have to apply the dataset from BRAST, please do not contact me for the dataset. Many thanks.), which have 210 HGG and 75 LGG volumes, and put the data folder along with all scripts.
 
 ```bash
 data
