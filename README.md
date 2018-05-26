@@ -53,3 +53,17 @@ python train.py --task=all
 ```
 
 Note that, if the loss stick on 1 at the beginning, it means the network doesn't converge to near-perfect accuracy, please try restart it.
+
+### Citation
+If you find this project useful, we would be grateful if you cite the TensorLayer paper：
+
+```
+@article{tensorlayer2017,
+author = {Dong, Hao and Supratak, Akara and Mai, Luo and Liu, Fangde and Oehmichen, Axel and Yu, Simiao and Guo, Yike},
+journal = {ACM Multimedia},
+title = {{TensorLayer: A Versatile Library for Efficient Deep Learning Development}},
+url = {http://tensorlayer.org},
+year = {2017}
+}
+```
+
