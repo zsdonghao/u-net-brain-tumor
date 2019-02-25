@@ -1,6 +1,6 @@
 # U-Net Brain Tumor Segmentation 
 
-🚀：Sep 2018 the data processing implementation in this repo is not the fastest, please use TensorFlow dataset API instead.
+🚀：Feb 2019 the data processing implementation in this repo is not the fastest, please use TensorFlow dataset API instead.
 
 This repo show you how to train a U-Net for brain tumor segmentation. By default, you need to download the training set of [BRATS 2017](http://braintumorsegmentation.org) dataset, which have 210 HGG and 75 LGG volumes, and put the data folder along with all scripts.
 
@@ -38,7 +38,7 @@ The `prepare_data_with_valid.py` split the training set into 2 folds for trainin
 
 - Network and Loss: In this experiment, as we use [dice loss](http://tensorlayer.readthedocs.io/en/latest/modules/cost.html#dice-coefficient) to train a network, one network only predict one labels (Label 1,2 or 4). We evaluate the performance using [hard dice](http://tensorlayer.readthedocs.io/en/latest/modules/cost.html#hard-dice-coefficient) and [IOU](http://tensorlayer.readthedocs.io/en/latest/modules/cost.html#iou-coefficient).
 
-- Data augmenation: Includes random left and right flip, rotation, shifting, shearing, zooming and the most important one -- [Elastic trasnformation](http://tensorlayer.readthedocs.io/en/latest/modules/prepro.html#elastic-transform) which is borrowed from ["Automatic Brain Tumor Detection and Segmentation Using U-Net Based Fully Convolutional Networks"](https://arxiv.org/pdf/1705.03820.pdf).
+- Data augmenation: Includes random left and right flip, rotation, shifting, shearing, zooming and the most important one -- [Elastic trasnformation](http://tensorlayer.readthedocs.io/en/latest/modules/prepro.html#elastic-transform), see ["Automatic Brain Tumor Detection and Segmentation Using U-Net Based Fully Convolutional Networks"](https://arxiv.org/pdf/1705.03820.pdf) for details.
 
 <div align="center">
     <img src="https://github.com/zsdonghao/u-net-brain-tumor/blob/master/example/brain_tumor_aug.png" width="80%" height="50%"/>
